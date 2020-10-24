@@ -1,19 +1,10 @@
-# Machine-Learning Approach for Cross-Domain Acronym Definition Identification
-# Maya Varma and Rachel Gardner
-# Autumn 2017
-# Train Machine Learning Classifier
 import sys
-sys.path.append('postgres-database/')
-
-from urllib.request import urlopen
-import re
-import csv
+import pickle
+import joblib
 import os
-from collections import defaultdict, Counter
-import operator
-import random 
-from dbFunctions import AcronymDatabase
-from sklearn.feature_extraction import text, DictVectorizer
+import re
+import glob
+from sklearn.feature_extraction import DictVectorizer
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.metrics import accuracy_score, confusion_matrix
@@ -21,130 +12,137 @@ from sklearn.linear_model import SGDClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn import tree, metrics, svm
 from sklearn.ensemble import RandomForestClassifier
-import numpy as np
-import matplotlib.pyplot as plt
-#from sklearn.externals import joblib
-#import sklearn.externals.joblib as extjoblib
-#import joblib
-import pickle
-
-#Load in csv data (contains list of HTML urls)
-def loadHTMLData():
-    urls = []
-    with open('data/data.csv', 'rU') as data:
-        reader = csv.reader(data, dialect=csv.excel_tab)
-        for row in reader:
-            if(len((row[0].split(','))[1]) > 0): urls.append((row[0].split(','))[1])
-    return urls
-
-def loadDuplicateData():
-    train = []
-    test = []
-    with open('data/duplicatedata.csv', 'rU') as data:
-        reader = csv.reader(data, dialect=csv.excel_tab)
-        count=0
-        for row in reader:
-            if(len((row[0].split(','))[1]) > 0): train.append((row[0].split(','))[2])
-            if(count%2 == 0 and len((row[0].split(','))[1]) > 0): train.append((row[0].split(','))[3])
-            elif(count%2 == 1 and len((row[0].split(','))[1]) > 0): test.append((row[0].split(','))[3])
-            count+=1
-    return (train, test)
-
-urls = loadHTMLData()
-trainingUrlsDuplicates = loadDuplicateData()[0] 
-testingUrlsDuplicates = loadDuplicateData()[1]
-trainingUrls = trainingUrlsDuplicates + urls[:int(0.7*len(urls))]
-testingUrls = testingUrlsDuplicates + urls[int(0.7*len(urls)):]
-print ('Size of Training Dataset: ', len(trainingUrls))
-print ('Size of Testing Dataset: ', len(testingUrls))
+from postgres.dbFunctions import AcronymDatabase
+from csp.main import clean_html, findContext, identifyAcronyms, ignore_sections
+from utils import features
 
 
+def train_naivebayes(X_train, true_defs, classifiers):
+    params = [{'alpha': [0.01, 0.1, 0.5, 1]}]
 
-#Adapted from NLTK package. Removes HTML markup from given string. 
-def clean_html(html):
-    # First we remove inline JavaScript/CSS:
-    cleaned = re.sub(r"(?is)<(script|style).*?>.*?(</\1>)", "", html.strip())
-    # Then we remove html comments. This has to be done before removing regular
-    # tags since comments can contain '>' characters.
-    cleaned = re.sub(r"(?s)<!--(.*?)-->[\n]?", "", cleaned)
-    # Next we can remove the remaining tags:
-    cleaned = re.sub(r"(?s)<.*?>", " ", cleaned)
-    # Finally, we deal with whitespace
-    cleaned = re.sub(r"&nbsp;", " ", cleaned)
-    cleaned = re.sub(r"  ", " ", cleaned)
-    cleaned = re.sub(r"  ", " ", cleaned)
-    return (cleaned.strip()).split()
+    clf = GridSearchCV(estimator=MultinomialNB(), param_grid=params, n_jobs=-1, cv=2).fit(X_train, true_defs)
+    print('Best alpha:', clf.best_estimator_.alpha)
+
+    classifiers['MultinomialNB'] = MultinomialNB(alpha=clf.best_estimator_.alpha).fit(X_train, true_defs)
+
+    pickle.dump(classifiers['MultinomialNB'], open('trained-models/naivebayes.pkl', "wb"))
 
 
-#Takes url as input. Returns list of all acronyms in webpage
-def identifyAcronyms(rawText):
-    acronyms = []
-    #words commonly misidentified as acronyms are manually blacklisted
-    blacklist = ['ABSTRACT', 'INTRODUCTION', 'CONCLUSION', 'CONCLUSIONS', 'ACKNOWLEDGEMENTS', 'RESULTS']
-    for i in range(1,len(rawText)-1):
-        word = rawText[i]
-        word = re.sub(r'[^\w\s]','',word)
-        '''
-        characteristics of an acronym: all capital letters, length > 2,
-        contains only alphabet characters, not in blacklist, and not part
-        of a header (identified by determining if surrounding words are in all-caps)
-        '''
-        nextIndex = i+1
-        prevIndex = i-1
-        if(len(word)>2 and word[:-1].isupper() and word.isalpha()            and word not in blacklist and not(rawText[i-1].isupper())            and not(rawText[i+1].isupper())):
-            acronyms.append((word, i))    
-    return acronyms
+def train_svc(X_train, true_defs, classifiers):
+    params = [
+        {
+            'C': [1],
+            'gamma': [0.001, 0.0001]
+        }
+    ]
+
+    clf = GridSearchCV(estimator=svm.SVC(), param_grid=params, n_jobs=-1).fit(X_train, true_defs)
+    print('Best C:',clf.best_estimator_.C) 
+    print('Best Kernel:',clf.best_estimator_.kernel)
+    print('Best Gamma:',clf.best_estimator_.gamma)
+
+    classifiers['LinearSVC'] = svm.LinearSVC(C=clf.best_estimator_.C).fit(X_train, true_defs)
+
+    pickle.dump(classifiers['LinearSVC'], open('trained-models/svc.pkl', "wb"))
 
 
+def train_decisiontree(X_train, true_defs, classifiers):
+    params = [
+        {
+            "max_depth": [3, None],
+            "max_features": [1, 2, None],
+            "min_samples_leaf": [1, 2, 3],
+            "criterion": ["gini", "entropy"]
+        }
+    ]
+
+    clf = GridSearchCV(estimator=tree.DecisionTreeClassifier(), param_grid=params, n_jobs=-1).fit(X_train, true_defs)
+    print('Best Max Depth:',clf.best_estimator_.max_depth) 
+    print('Best Max Features:',clf.best_estimator_.max_features)
+    print('Best Min Samples:',clf.best_estimator_.min_samples_leaf)
+    print('Best Criterion:',clf.best_estimator_.criterion)
+
+    classifiers['DecisionTreeClassifier'] = \
+        tree.DecisionTreeClassifier(min_samples_leaf=clf.best_estimator_.min_samples_leaf).fit(X_train, true_defs)
+
+    pickle.dump(classifiers['DecisionTreeClassifier'], open('trained-models/decisiontree.pkl', "wb"))
 
 
-# Extracting Features
+def train_randomforest(X_train, true_defs, classifiers):
+    classifiers['RandomForestClassifier'] = RandomForestClassifier().fit(X_train, true_defs)
+
+    pickle.dump(classifiers['RandomForestClassifier'], open('trained-models/randomforest.pkl', "wb"))
 
 
-db = AcronymDatabase()
+def train_and_predict(what):
 
-#Convert training data to sparse vectors
-tokenize = CountVectorizer().build_tokenizer()
-true_defs = []
-def features(cad):
-    acronym = cad[0]
-    context = cad[1]
-    if(len(cad)==3): true_defs.append(cad[2])
-    terms = tokenize(context)
-    d = {acronym: 10}
-    for t in terms:
-        if(t not in text.ENGLISH_STOP_WORDS):
-            d[t] = d.get(t, 0) + 1
-    return d
+    if what == 'test':
+        data_y_true = joblib.load('train.y.pkl'.format(what))
 
-cadList = db.getContextAcronymList()
-vect = DictVectorizer()
-X_train = vect.fit_transform(features(d) for d in cadList)
-joblib.dump(vect, 'trained-models/vectorizer.pkl')
-print (X_train.toarray())
+    if os.path.exists('{}.x.pkl'.format(what)) and os.path.exists('{}.y.pkl'.format(what)):
+        data_x = joblib.load('{}.x.pkl'.format(what))
+        data_y = joblib.load('{}.y.pkl'.format(what))
+    else:
+        data_x = []
+        data_y = []
+        for fname in glob.glob("data/{}/*.htm".format(what)):
+            if 'dv.' in fname:
+                url = 'https://devopedia.org/{}'.format(re.sub(r'.*\.(\d+)\.htm', r'\1', fname))
+            else:
+                url = 'https://en.wikipedia.org/?curid={}'.format(re.sub(r'.*\.(\d+)\.htm', r'\1', fname))
+
+            with open(fname, "r") as f:
+                html = f.read()
+
+            rawText = clean_html(html)
+            rawText = ignore_sections(rawText)
+            if not rawText:
+                continue
+
+            acronyms = identifyAcronyms(rawText)
+            for acronym, i in acronyms:
+                if db.getTrueDefinition(acronym, url) is None:
+                    continue
+                if what == 'test' and db.getTrueDefinition(acronym, url) not in data_y_true:
+                    continue
+                context = findContext(acronym, rawText, i)
+                data_x.append((acronym, context))
+                data_y.append(db.getTrueDefinition(acronym, url))
+
+        joblib.dump(data_x, '{}.x.pkl'.format(what))
+        joblib.dump(data_y, '{}.y.pkl'.format(what))
+
+    # On training set, we would have perfect prediction
+    X_new_counts = vect.transform(features(d, tokenize, true_defs) for d in data_x)
+    for cname, classifier in classifiers.items():
+        predicted = classifier.predict(X_new_counts)
+        print(cname, metrics.precision_recall_fscore_support(data_y, predicted, average='weighted'))
+        #for train, definition, true in zip(data_x, predicted, data_y):
+        #    if true != definition:
+        #        print('%s => %s, %s'.format(train[0], definition, true))
+        #print(cname, metrics.classification_report(data_y, predicted))
 
 
-# Train Machine Learning Classifier
-clf1 = MultinomialNB(alpha=0.09).fit(X_train, true_defs)
-print ('Trained Model 1')
-clf2 = svm.LinearSVC(C=1).fit(X_train, true_defs)
-print ('Trained Model 2')
-clf3 = tree.DecisionTreeClassifier(min_samples_leaf=1).fit(X_train, true_defs)
-print ('Trained Model 3')
-clf4 = RandomForestClassifier().fit(X_train, true_defs)
-print ('Trained Model 4')
+if __name__ == "__main__":
+    db = AcronymDatabase()
+    tokenize = CountVectorizer().build_tokenizer()
+    true_defs = []
 
-#joblib.dump(clf1, 'trained-models/naivebayes.pkl') 
-#joblib.dump(clf2, 'trained-models/svc.pkl') 
-#joblib.dump(clf3, 'trained-models/decisiontree.pkl') 
-#joblib.dump(clf4, 'trained-models/randomforest.pkl') 
+    cadList = db.getContextAcronymList()
+    vect = DictVectorizer()
+    X_train = vect.fit_transform(features(d, tokenize, true_defs) for d in cadList)
+    os.makedirs('trained-models', exist_ok=True)
+    joblib.dump(vect, 'trained-models/vectorizer.pkl')
+    print(X_train.toarray())
 
+    classifiers = {}
+    train_naivebayes(X_train, true_defs, classifiers)
+    train_svc(X_train, true_defs, classifiers)
+    train_decisiontree(X_train, true_defs, classifiers)
+    train_randomforest(X_train, true_defs, classifiers)
 
-pickle.dump(clf1, open('trained-models/naivebayes.pkl', "wb"))
-pickle.dump(clf2, open('trained-models/svc.pkl', "wb"))
-pickle.dump(clf3, open('trained-models/decisiontree.pkl', "wb"))
-pickle.dump(clf4, open('trained-models/randomforest.pkl', "wb"))
+    print("Training...")
+    train_and_predict('train')
 
-
-
-db.close()
+    print("Validating...")
+    train_and_predict('test')

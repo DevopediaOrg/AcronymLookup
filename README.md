@@ -1,39 +1,39 @@
-# AcronymLookup
-Chandrateja Reddy  
+# Overview
 
-This repo contains My project for Devopedia: We decided to create a system to identify acronym definitions from context, both because this was a problem that had not been solved before and because the system is something that we personally could use. Furthermore, the problem gave us the opportunity to get creative in our data collection. Below is an overview of our process with an emphasis on which files to run/modify in order to improve upon our work. To view our machine learning pipeline, read all code for training and testing, and view all data visualizations, please see the `.ipynb` files . To read more about the research specifics, see our paper, `Machine-Learning Approach for Cross-Domain Acronym Definition Identification.pdf`. 
+Suppose we have the acronym _CSS_. It can mean "Cascading Style Sheets" or "Chirp Spread Spectrum" depending on the context. This work trains an ML model to disambiguate acronyms based on the context.
 
-## Setting Up The Environment
-For convenience, we used a Python `virtualenv` to manage dependencies. To run our code, set up and activate a Python 2 `virtualenv`, then run `pip install -r requirements.txt`.
-
-## Data Pre-Processing
-A large part of the contribution made in this work was in the tools to create and automatically annotate a dataset of acronyms and their ground truth definitions, along with their context in the raw HTML.
-
-### Download text from Wikipedia
-In the `data` folder, run `python generateURLSpreadsheet.py`. This will recursively list all pages on Wikipedia under the categories listed in `categories.txt`. Each category will be created as its own `{Name of Category}.csv` file in the `categories` folder. If you want to change the number of subcategories to traverse, or the number of URLs per category, you can modify those as arguments to the script. By default the script runs as if you invoked it using `python generateURLSpreadsheet.py --recursionDepth=3 --numURLs=3000`. 
-
-### Downloaded Files Of Devopedia Articles (Acronyms , Abbrevations)
-devopediaAcronyms.v2248.json , devopediaArticles.v2248.json
-
-(https://github.com/teja0508/AcronymLookup/blob/main/label-definitions/definitions_new.csv) .This definitions_new.csv file is combined Acronym data of Wikkipedia & Devopedia Articles
+This work is derived from the work of [Varma and Gardner (2017)](https://github.com/maya124/AcronymLookup) with some updates done by [Reddy (2020)](https://github.com/teja0508/AcronymLookup). In particular, this work is concerned with domains relevant to Devopedia (Computer Science, Electronics, Telecommunications).
 
 
-From there, you'll need to combine the files into one `data.csv` file. The rows will be automatically separated into train and test, but you'll need to shuffle the rows manually. In our case this was to ensure we put the lists of acronyms in the train set.
+# Installation
 
-### Identify acronyms in text
-Identification of acronyms in text is performed through a rule-based method. If you would like to use our code to perform the specific task of identifying acronyms in a body of text, please refer to the identifyAcronyms() method in `train.py`. 
+If running in Google Colab, simply run `Acronyms.ipynb`. Else, following this procedure:
+- Run `pip install -r requirements.txt` to set up Python dependencies.
+- Install and configure Postgres. DB schema is in file `setUpDb.sql`. On Linux, these can be done via commands:
+```
+    sudo apt-get -y -qq update
+    sudo apt-get -y -qq install postgresql
+    sudo service postgresql start
+    sudo -u postgres psql -U postgres -c "ALTER USER postgres PASSWORD 'pgpwd';"
+    sudo -u postgres psql -U postgres -c 'DROP DATABASE IF EXISTS acronyms;'
+    sudo -u postgres psql -U postgres -c 'CREATE DATABASE acronyms;'
+    sudo -u postgres psql -U postgres -d acronyms -f postgres/setUpDb.sql
+```
 
-### Extract definitions
-Definitions are extracted from text using a constraint satisfaction problem (CSP) based method that we designed. Code to extract definitions can be viewed in the `label-definitions` folder, and further technical details are explained in the paper.
 
+# Process
 
-### Accessing the Database
-If you are doing your own training, you'll need to set up Postgres. Once created, you can use the `setUpDB.sql` script in the `postgres-database` folder to set up the schema. If you need to reset the database or update the schema in the future, you can use `bash dbUtilities.bash updateSchema` to drop tables and reload schema from `setUpDB.sql`. To use the database, you can simply import `dbFunctions.py` and use the `AcronymDatabase` class.
-
-## Training the Model
-To train the model, simply run `python train.py`.
-Create trained-models Folder in Root Dir....Run `py train.py` Command .Then Automatically Models Will Created and Model Will be Saved as a .pkl files in trained-models.
-
-## Using the Model
-To test against the testing set you have created, run `python test.py`. This will automatically evaluate the accuracy of the model. However, if you are just looking to run simple queries, pass a string to the `predict()` function in `serve.py`.
-
+- Data Collection:
+    - Wikipedia is used as the data source. We start with a seed in `data/seed.json`.
+    - Articles in the seed have been pre-selected from a Wikipedia page on [Computing & IT abbreviations](https://en.wikipedia.org/wiki/List_of_computing_and_IT_abbreviations).
+    - From the seed, obtain Wikipedia page titles and URLs: `python get_urls.py`. Output is saved in `data/data.csv`.
+    - For all URLs in `data/data.csv`, download and save content: `python download.py`. Downloaded files are saved in `data/train` and `data/test` folders.
+- Data Pre-processing:
+    - Extract acronym definitions and context by treating this as a Constraint Satisfaction Problem (CSP): `python csp/main.py`. 
+    - Extracted data is saved in `definitions.csv`.
+    - **TODO**: This extraction is not working very well at the moment. File `definitions.csv` has been manually edited.
+- Model Training and Validation:
+    - Data is read from database. Downloaded content is also used.
+    - Train by calling `python train.py`. Multiple classifier models are saved as a `trained_models/*.pkl` files.
+- Model Use:
+    - Call `python serve.py {model} {some string with acronym}`, such as `python serve.py svc 'ALU is an essential part of a computer along with memory and peripherals.'`

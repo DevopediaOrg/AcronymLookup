@@ -76,7 +76,7 @@ class CSP:
         value |val|?
         => csp.unaryFactors[var][val]
         """
-        factor = {val:float(factorFunc(val)) for val in self.values[var]}
+        factor = {val:float(factorFunc(*val)) for val in self.values[var]}
         if self.unaryFactors[var] is not None:
             assert len(self.unaryFactors[var]) == len(factor)
             self.unaryFactors[var] = {val:self.unaryFactors[var][val] * \
@@ -99,11 +99,11 @@ class CSP:
         try:
             assert var1 != var2
         except:
-            print '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
-            print '!! Tip:                                                                       !!'
-            print '!! You are adding a binary factor over a same variable...                  !!'
-            print '!! Please check your code and avoid doing this.                               !!'
-            print '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+            print('!! Tip:                                                                       !!')
+            print('!! You are adding a binary factor over a same variable...                     !!')
+            print('!! Please check your code and avoid doing this.                               !!')
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
             raise
 
         self.update_binary_factor_table(var1, var2,
@@ -281,11 +281,11 @@ class BacktrackingSearch():
         Prints a message summarizing the outcome of the solver.
         """
         if self.optimalAssignment:
-            print "Found %d optimal assignments with weight %f in %d operations" % \
-                (self.numOptimalAssignments, self.optimalWeight, self.numOperations)
-            print "First assignment took %d operations" % self.firstAssignmentNumOperations
+            print("Found %d optimal assignments with weight %f in %d operations" % \
+                (self.numOptimalAssignments, self.optimalWeight, self.numOperations))
+            print("First assignment took %d operations" % self.firstAssignmentNumOperations)
         else:
-            print "No solution was found."
+            print("No solution was found.")
 
     def get_delta_weight(self, assignment, var, val):
         """
@@ -308,7 +308,7 @@ class BacktrackingSearch():
         if self.csp.unaryFactors[var]:
             w *= self.csp.unaryFactors[var][val]
             if w == 0: return w
-        for var2, factor in self.csp.binaryFactors[var].iteritems():
+        for var2, factor in self.csp.binaryFactors[var].items():
             if var2 not in assignment: continue  # Not assigned yet
             w *= factor[val][assignment[var2]]
             if w == 0: return w

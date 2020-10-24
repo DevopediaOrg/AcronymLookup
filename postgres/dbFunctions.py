@@ -10,7 +10,7 @@ from collections import Counter
 
 class AcronymDatabase:
     def __init__(self):
-        conn = psycopg2.connect(database="acronyms", user="postgres", password="Chandra@12", host="localhost")
+        conn = psycopg2.connect(database="acronyms", user="postgres", password="pgpwd", host="localhost")
         self.conn = conn
         self.cur = conn.cursor()
 
@@ -45,7 +45,6 @@ class AcronymDatabase:
         self.cur.execute("SELECT true_definition FROM true_definitions WHERE acronym=%s AND url=%s", (acronym,url))
         result = self.cur.fetchone()
         return result[0] if result else None
-
     
     def addContext(self, context):
         self.cur.execute("INSERT INTO context (context) VALUES (%s) RETURNING cid", (context,))
