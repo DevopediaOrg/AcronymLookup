@@ -11,16 +11,7 @@ If running in Google Colab, installation is part of the Jupyter Notebook `Acrony
 
 If not Google Colab, following this procedure:
 - Run `pip install -r requirements.txt` to set up Python dependencies.
-- Install and configure Postgres. DB schema is in file `setUpDb.sql`. On Linux, these can be done via commands:
-```
-    sudo apt-get -y -qq update
-    sudo apt-get -y -qq install postgresql
-    sudo service postgresql start
-    sudo -u postgres psql -U postgres -c "ALTER USER postgres PASSWORD 'pgpwd';"
-    sudo -u postgres psql -U postgres -c 'DROP DATABASE IF EXISTS acronyms;'
-    sudo -u postgres psql -U postgres -c 'CREATE DATABASE acronyms;'
-    sudo -u postgres psql -U postgres -d acronyms -f postgres/setUpDb.sql
-```
+- Install and configure Postgres by running `bash postgres/install.sh` DB schema is in file `postgres/setUpDb.sql`.
 
 
 # Process
