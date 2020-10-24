@@ -7,7 +7,9 @@ This work is derived from the work of [Varma and Gardner (2017)](https://github.
 
 # Installation
 
-If running in Google Colab, simply run `Acronyms.ipynb`. Else, following this procedure:
+If running in Google Colab, installatio is part of the Jupyter Notebook `Acronyms.ipynb`.
+
+If not Google Colab, following this procedure:
 - Run `pip install -r requirements.txt` to set up Python dependencies.
 - Install and configure Postgres. DB schema is in file `setUpDb.sql`. On Linux, these can be done via commands:
 ```
@@ -34,6 +36,6 @@ If running in Google Colab, simply run `Acronyms.ipynb`. Else, following this pr
     - **TODO**: This extraction is not working very well at the moment. File `definitions.csv` has been manually edited.
 - Model Training and Validation:
     - Data is read from database. Downloaded content is also used.
-    - Train by calling `python train.py`. Multiple classifier models are saved as a `trained_models/*.pkl` files.
+    - Train by calling `python train.py`. Multiple classifier models are saved as `trained_models/*.pkl` files.
 - Model Use:
     - Call `python serve.py {model} {some string with acronym}`, such as `python serve.py svc 'ALU is an essential part of a computer along with memory and peripherals.'`
