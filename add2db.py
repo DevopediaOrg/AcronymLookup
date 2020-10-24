@@ -3,7 +3,7 @@ import csv
 import glob
 import re
 from csp.main import clean_html, findContext, identifyAcronyms, ignore_sections
-from postgres.dbFunctions import AcronymDatabase
+from database.wrapper import AcronymDatabase
 
 
 def add_true_defs(db):
@@ -44,6 +44,8 @@ def add_acronyms(db):
 
 if __name__ == "__main__":
     db = AcronymDatabase()
+    db.clearTrueDefTable()
+    db.clearAcronymTables()
     add_true_defs(db)
     add_acronyms(db)
     db.close()

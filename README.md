@@ -9,9 +9,7 @@ This work is derived from the work of [Varma and Gardner (2017)](https://github.
 
 If running in Google Colab, installation is part of the Jupyter Notebook `Acronyms.ipynb`.
 
-If not Google Colab, following this procedure:
-- Run `pip install -r requirements.txt` to set up Python dependencies.
-- Install and configure Postgres by running `bash postgres/install.sh` DB schema is in file `postgres/setUpDb.sql`.
+If not Google Colab, run `pip install -r requirements.txt` to set up Python dependencies.
 
 
 # Process
@@ -23,8 +21,9 @@ If not Google Colab, following this procedure:
     - For all URLs in `data/data.csv`, download and save content: `python download.py`. Downloaded files are saved in `data/train` and `data/test` folders.
 - Data Pre-processing:
     - Extract acronym definitions and context by treating this as a Constraint Satisfaction Problem (CSP): `python csp/main.py`. 
-    - Extracted data is saved in `definitions.csv`.
-    - **TODO**: This extraction is not working very well at the moment. File `definitions.csv` has been manually edited.
+    - Extracted data is saved in `data/definitions.csv`.
+    - **TODO**: This extraction is not working very well at the moment. File `data/definitions.csv` has been manually edited.
+    - DB is updated with `python add2db.py`. This uses the file `data/definitions.csv`.
 - Model Training and Validation:
     - Data is read from database. Downloaded content is also used.
     - Train by calling `python train.py`. Multiple classifier models are saved as `trained_models/*.pkl` files.

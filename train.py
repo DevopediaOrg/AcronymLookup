@@ -12,7 +12,7 @@ from sklearn.linear_model import SGDClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn import tree, metrics, svm
 from sklearn.ensemble import RandomForestClassifier
-from postgres.dbFunctions import AcronymDatabase
+from database.wrapper import AcronymDatabase
 from csp.main import clean_html, findContext, identifyAcronyms, ignore_sections
 from utils import features
 
@@ -37,9 +37,9 @@ def train_svc(X_train, true_defs, classifiers):
     ]
 
     clf = GridSearchCV(estimator=svm.SVC(), param_grid=params, n_jobs=-1).fit(X_train, true_defs)
-    print('Best C:',clf.best_estimator_.C) 
-    print('Best Kernel:',clf.best_estimator_.kernel)
-    print('Best Gamma:',clf.best_estimator_.gamma)
+    print('Best C:', clf.best_estimator_.C) 
+    print('Best Kernel:', clf.best_estimator_.kernel)
+    print('Best Gamma:', clf.best_estimator_.gamma)
 
     classifiers['LinearSVC'] = svm.LinearSVC(C=clf.best_estimator_.C).fit(X_train, true_defs)
 
@@ -57,10 +57,10 @@ def train_decisiontree(X_train, true_defs, classifiers):
     ]
 
     clf = GridSearchCV(estimator=tree.DecisionTreeClassifier(), param_grid=params, n_jobs=-1).fit(X_train, true_defs)
-    print('Best Max Depth:',clf.best_estimator_.max_depth) 
-    print('Best Max Features:',clf.best_estimator_.max_features)
-    print('Best Min Samples:',clf.best_estimator_.min_samples_leaf)
-    print('Best Criterion:',clf.best_estimator_.criterion)
+    print('Best Max Depth:', clf.best_estimator_.max_depth) 
+    print('Best Max Features:', clf.best_estimator_.max_features)
+    print('Best Min Samples:', clf.best_estimator_.min_samples_leaf)
+    print('Best Criterion:', clf.best_estimator_.criterion)
 
     classifiers['DecisionTreeClassifier'] = \
         tree.DecisionTreeClassifier(min_samples_leaf=clf.best_estimator_.min_samples_leaf).fit(X_train, true_defs)
@@ -74,7 +74,7 @@ def train_randomforest(X_train, true_defs, classifiers):
     pickle.dump(classifiers['RandomForestClassifier'], open('trained-models/randomforest.pkl', "wb"))
 
 
-def train_and_predict(what):
+def train_and_predict(what, tokenize, vect):
 
     if what == 'test':
         data_y_true = joblib.load('train.y.pkl'.format(what))
@@ -133,7 +133,6 @@ if __name__ == "__main__":
     X_train = vect.fit_transform(features(d, tokenize, true_defs) for d in cadList)
     os.makedirs('trained-models', exist_ok=True)
     joblib.dump(vect, 'trained-models/vectorizer.pkl')
-    print(X_train.toarray())
 
     classifiers = {}
     train_naivebayes(X_train, true_defs, classifiers)
@@ -142,7 +141,7 @@ if __name__ == "__main__":
     train_randomforest(X_train, true_defs, classifiers)
 
     print("Training...")
-    train_and_predict('train')
+    train_and_predict('train', tokenize, vect)
 
     print("Validating...")
-    train_and_predict('test')
+    train_and_predict('test', tokenize, vect)
