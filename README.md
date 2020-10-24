@@ -7,7 +7,7 @@ This work is derived from the work of [Varma and Gardner (2017)](https://github.
 
 # Installation
 
-If running in Google Colab, installatio is part of the Jupyter Notebook `Acronyms.ipynb`.
+If running in Google Colab, installation is part of the Jupyter Notebook `Acronyms.ipynb`.
 
 If not Google Colab, following this procedure:
 - Run `pip install -r requirements.txt` to set up Python dependencies.
