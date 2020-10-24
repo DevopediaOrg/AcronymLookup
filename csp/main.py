@@ -33,13 +33,13 @@ def solveCSP(acronym, text, threshold=1000):
     
         csp.add_variable(variableName, domain)
         def is_first_char(candidateWord,_,index):
-            if (index == 0):
+            if index == 0:
                 return 10
             else:
                 return 1
         csp.add_unary_factor(variableName, is_first_char)
         def is_upper(candidateWord,_,index):
-            if (candidateWord[index].isupper()):
+            if candidateWord[index].isupper():
                 return 10
             else:
                 return 1
@@ -61,7 +61,7 @@ def solveCSP(acronym, text, threshold=1000):
     search = BacktrackingSearch()
     search.solve(csp, True, True)
 
-    if (search.optimalWeight >= threshold):
+    if search.optimalWeight >= threshold:
         return extractDefinition(text, search.optimalAssignment)
     else:
         return None
@@ -131,23 +131,23 @@ def identifyAcronyms(rawText):
         '''
         nextIndex = i+1
         prevIndex = i-1
-        if(len(word)>2 and word[:-1].isupper() and word.isalpha() \
-           and word not in blacklist and not(rawText[i-1].isupper()) \
-           and not(rawText[i+1].isupper())):
+        if len(word)>2 and word[:-1].isupper() and word.isalpha() \
+           and word not in blacklist and not rawText[i-1].isupper() \
+           and not rawText[i+1].isupper():
             acronyms.append((word, i))    
     return acronyms
 
 
 def findContext(acronym, rawText, i):
     startIndex=i-15
-    if (i-10 < 0): startIndex=0
+    if i-10 < 0: startIndex = 0
     endIndex = i+15 
-    if (i+10 > len(rawText)): endIndex = len(rawText)-1
+    if i+10 > len(rawText): endIndex = len(rawText)-1
     context = []
     for word in rawText[startIndex:endIndex+1]:
         word = word.lower()
         word = "".join(re.findall("[a-zA-Z]+", word))
-        if(len(word)==0 or word==acronym.lower()): continue
+        if len(word)==0 or word==acronym.lower(): continue
         context.append(word)
     return " ".join(context)
 

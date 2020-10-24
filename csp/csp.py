@@ -223,7 +223,7 @@ def get_or_variable(csp, name, variables, value):
 
         # incorporate information from X_i
         def factor(val, b):
-            if (val == value): return b == 'equals'
+            if val == value: return b == 'equals'
             return b != 'equals'
         csp.add_binary_factor(X_i, A_i, factor)
 
@@ -443,13 +443,13 @@ class BacktrackingSearch():
             min_count = float('inf')
             min_idx = -1
             for idx, var in enumerate(self.csp.variables):
-                if (var in assignment):
+                if var in assignment:
                     continue
                 count = 0
                 for value in self.domains[var]:
-                    if (self.get_delta_weight(assignment, var, value) > 0):
+                    if self.get_delta_weight(assignment, var, value) > 0:
                         count += 1
-                if (count < min_count):
+                if count < min_count:
                     min_count = count
                     min_idx = idx
             return self.csp.variables[min_idx]
@@ -479,7 +479,7 @@ class BacktrackingSearch():
         # initialize queue
         queue = [var]
         
-        while (queue):
+        while queue:
 
             # get next value to process
             curr_var = queue.pop(0) 
@@ -495,17 +495,17 @@ class BacktrackingSearch():
                     for new_value in self.domains[curr_var]:
 
                         # check if binary factor is present
-                        if (self.csp.binaryFactors[curr_var][neighbor_var]):
-                            if (self.csp.binaryFactors[curr_var][neighbor_var][new_value][neighbor_val] == 0):
+                        if self.csp.binaryFactors[curr_var][neighbor_var]:
+                            if self.csp.binaryFactors[curr_var][neighbor_var][new_value][neighbor_val] == 0:
                                 numInconsistent += 1
 
                     # if value is inconsistent with every possible choice of current var
-                    if (numInconsistent == len(self.domains[curr_var])):
+                    if numInconsistent == len(self.domains[curr_var]):
                         self.domains[neighbor_var].remove(neighbor_val)
                         domainChanged = True
                         
                 # add neighbors to be processed
-                if (domainChanged): 
+                if domainChanged:
                     queue.append(neighbor_var)
                     
         # END_YOUR_CODE
